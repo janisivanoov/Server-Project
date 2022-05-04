@@ -5,6 +5,12 @@ VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "server", "server\server.pyproj", "{2BF3F51E-5067-4D8D-B13C-9CA9912971B1}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ABI", "ABI", "{3D8D6F47-474F-4C21-A5F1-C78E7874C412}"
+	ProjectSection(SolutionItems) = preProject
+		EmitEvent.json = EmitEvent.json
+		EthToken.json = EthToken.json
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

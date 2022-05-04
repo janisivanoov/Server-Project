@@ -3,7 +3,6 @@ import socketserver
 import mysql.connector
 from mysql.connector import errorcode
 import sys
-import cgi
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import json
 from logging import error, exception
@@ -13,12 +12,19 @@ from web3.auto import w3
 from web3 import Web3 
 import json
 from web3 import Web3
+import json
+from web3 import Web3
 import asyncio
+import mysql.connector
+from mysql.connector import errorcode
+from web3 import Web3
+import json
+import time
 
 # DATABASE PART
 
-#contract_address = "0xa274d4daaff01e3aa710907aabdd57d036c96cec"
-#cont_addr = int(("address")(contract_address))
+# Contract address
+contract_address = "0xa274d4daaff01e3aa710907aabdd57d036c96cec"
 
 # Initializing parameters
 my_config = {
@@ -40,103 +46,49 @@ else:
   
 cursor =  my_cn.cursor() 
 
-# Initialise WEB3 ENS
-w3 = Web3(Web3.HTTPProvider("https://mainnet.infura.io/v3/e1aff836d3a64d6aba0f028217da381f"))
-
-import mysql.connector
-from mysql.connector import errorcode
-
 eth_key = "7I39Q4ZZ6SER7ZZTKQMNGYHD3UTZ6BSQ32"
 eth_contract = "0xa274d4daaff01e3aa710907aabdd57d036c96cec"
 
-maxcount = 100
-
-rrabi = [
-  {
-    "inputs": [
-      {
-        "internalType": "uint112",
-        "name": "reserve0",
-        "type": "uint112"
-      },
-      {
-        "internalType": "uint112",
-        "name": "reserve1",
-        "type": "uint112"
-      }
-    ],
-    "name": "Sync",
-    "outputs": [
-      {
-        "internalType": "uint112",
-        "name": "reserve0",
-        "type": "uint112"
-      },
-      {
-          "internalType": "uint112",
-          "name": "reserve1",
-          "type": "uint112"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-]
-
-rrcontract = w3.eth.contract(address = Web3.toChecksumAddress('0xa274d4daaff01e3aa710907aabdd57d036c96cec'), abi = rrabi)
+infuraURL = "https://mainnet.infura.io/v3/e1aff836d3a64d6aba0f028217da381f"
+account = "0xc623cAA847a077029624dEc1374a8f8C4d25035d"
+contractAddress = "0x7b9fC3fBE0a4ff099126FcAdA64e70dEc6B4b07B"
 
 
-# Function Reads First block    
-
-def getBlock():
-    # read block number
-    q_block = "SELECT Max(block) from server.test_info"
-    cursor.execute(q_block)
-    for (block) in cursor:
-        start_block = block
-    if start_block == (None,):
-        start_block = (0,)
-    return start_block[0]
+web3 = Web3(Web3.HTTPProvider(infuraURL))
 
 
-# Function updates reverse registry table
-def updateName(domain, address, block):
-    i_name = "insert into test_info (addr, name, block) values (%s, %s, %s)"
-    u_name = "update test_info set name = %s, block=%s where addr = %s"
-    d_name = "delete from test_info where addr = %s"
-    if domain != "":
-        if domain == "None":
-            # delete name from the registry
-            cursor.execute(d_name, [address])
-            my_cn.commit()
-        else:
-            # insert or update
-        
-            try:
-                # attempt to insert
-                cursor.execute(i_name, [address, domain, block])
-            except mysql.connector.Error as err:
-                # update if record is there
-                if err.errno == 1062:
-                    cursor.execute(u_name, [domain, block, address])
-                else:
-                    print (err)
-                    quit()
-            finally:
-                my_cn.commit()
+f = open('./ABI/EmitEvent.json')
+abi = json.load(f)
 
-#TEST-----------------------------------------------------------------------------------------------------------------------------------------------------------
+# contract instance
+EmitEvent = web3.eth.contract(address=contractAddress, abi=abi)
 
-#event_signature_hash = Web3.keccak(text="Sync(uint32)").hex()
-#event_filter = w3.eth.filter({
-   # "address": cont_addr,
-   # "topics": [event_signature_hash,
-   #            "0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1"],
-   # })
+# filter for contract address
+block_filter = web3.eth.filter({'fromBlock':'latest', 'address':contractAddress})
 
-# Close the cursor and the connection
-cursor.close()
-my_cn.close()
+
+balance = web3.eth.getBalance(account)
+
+
+# event object
+newString_Event = EmitEvent.events.NewString()
+newNumber_Event = EmitEvent.events.NewNumber()
+
+def handle_event(event):
+    
+    receipt = web3.eth.waitForTransactionReceipt(event['transactionHash'])
+    result = newString_Event.processReceipt(receipt)
+    # print(result[0]['args']) 
+    print(receipt)
+    
+def event_loop(event_filter, poll_interval):
+    while True:
+        for event in event_filter.get_new_entries():
+            handle_event(event)
+            time.sleep(poll_interval)
+
+print("listening for events...")
+event_loop(block_filter, 2)
 
 
 
