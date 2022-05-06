@@ -1,5 +1,6 @@
 import http.server
 import socketserver
+from eth_typing.evm import HexAddress
 import mysql.connector
 from mysql.connector import errorcode
 import sys
@@ -20,11 +21,25 @@ from mysql.connector import errorcode
 from web3 import Web3
 import json
 import time
-
+from typing import List
+from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy.orm import Session
+from . import crud, models, schemas
+from .database import Base
+from typing import List
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
+from uint import Uint, Int
+from pydantic import BaseModel
+from sqlalchemy.orm import relationship
+import threading
+import time
 # DATABASE PART
 
 # Contract address
 contract_address = "0xa274d4daaff01e3aa710907aabdd57d036c96cec"
+w3 = web3.Web3(web3.IPCProvider("/home/node/geth.ipc"))
 
 # Initializing parameters
 my_config = {
@@ -46,55 +61,30 @@ else:
   
 cursor =  my_cn.cursor() 
 
-eth_key = "7I39Q4ZZ6SER7ZZTKQMNGYHD3UTZ6BSQ32"
-eth_contract = "0xa274d4daaff01e3aa710907aabdd57d036c96cec"
+#WS method
 
-infuraURL = "https://mainnet.infura.io/v3/e1aff836d3a64d6aba0f028217da381f"
-account = "0xc623cAA847a077029624dEc1374a8f8C4d25035d"
-contractAddress = "0x7b9fC3fBE0a4ff099126FcAdA64e70dEc6B4b07B"
+IFilter = w3.eth.filter(
+    {
+        "topics": [[
+            #sync
+            "0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1",
+            #swap
+            "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822"
+            ]]        
+    }
+)
 
-
-web3 = Web3(Web3.HTTPProvider(infuraURL))
-
-
-f = open('./ABI/EmitEvent.json')
-abi = json.load(f)
-
-# contract instance
-EmitEvent = web3.eth.contract(address=contractAddress, abi=abi)
-
-# filter for contract address
-block_filter = web3.eth.filter({'fromBlock':'latest', 'address':contractAddress})
-
-
-balance = web3.eth.getBalance(account)
-
-
-# event object
-newString_Event = EmitEvent.events.NewString()
-newNumber_Event = EmitEvent.events.NewNumber()
-
-def handle_event(event):
-    
-    receipt = web3.eth.waitForTransactionReceipt(event['transactionHash'])
-    result = newString_Event.processReceipt(receipt)
-    # print(result[0]['args']) 
-    print(receipt)
-    
-def event_loop(event_filter, poll_interval):
+def IFilter_Logging(IFilter, poll_interval):
     while True:
-        for event in event_filter.get_new_entries():
-            handle_event(event)
-            time.sleep(poll_interval)
+        #output to database
+        print(IFilter.get_new_entries())
+        time.sleep(poll_interval)
 
-print("listening for events...")
-event_loop(block_filter, 2)
+T = threading.Thread(target = IFilter_Logging, args = (IFilter,1))
+T.start()
+T.join()
 
-
-
-
-
-
+#HTTP method
 
 
 
@@ -139,3 +129,47 @@ if __name__ == "__main__":
         server.server_close()
         print("Server stopped successfully")
         sys.exit(0)
+
+
+
+# FastAPI 
+
+
+models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
+
+class Pair(Base):
+    pair = "pair"
+
+
+    reserve0 = Column(Integer, primary_key=True, index=True)
+    reserve1 = Column(Integer, primary_key=True, index=True)
+    token0 = Column(Integer, primary_key=True, index=True)
+    token1 = Column(Integer, primary_key=True, index=True)
+    fee = Column(Integer, primary_key=True, index=True)
+    address = Column(Integer, primary_key=True, index=True)
+
+class PairBase(BaseModel):
+    reserve0: Uint
+    reserve1: Uint
+    token0: hex(20)
+    token1: hex(20)
+    fee: Uint
+    address: hex(20)
+
+
+class PairCreate(PairBase):
+    pass
+
+
+class Pair(PairBase):
+    reserve0: Uint
+    reserve1: Uint
+    token0: hex(20)
+    token1: hex(20)
+    fee: Uint
+    address: hex(20)
+
+    class Config:
+        orm_mode = True
