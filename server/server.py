@@ -35,6 +35,15 @@ from pydantic import BaseModel
 from sqlalchemy.orm import relationship
 import threading
 import time
+from sqlalchemy.orm import Session
+from . import crud, models, schemas
+from .database import SessionLocal, engine
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+models.Base.metadata.create_all(bind=engine)
+
 # DATABASE PART
 
 # Contract address
@@ -274,6 +283,22 @@ if __name__ == "__main__":
 
 # FastAPI 
 
+SQLALCHEMY_DATABASE_URL = "postgresql://user:password@postgresserver/db"
+
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -310,10 +335,26 @@ class Pair(PairBase):
     token1: hex(20)
     fee: Uint
     address: hex(20)
+    pair_id: int
 
     class Config:
         orm_mode = True
 
+def get_pair(db: Session, pair_id: int):
+    return db.query(models.Pair).filter(models.Pair.id == pair_id).first()
+
+@app.post("/pairs/", response_model=schemas.Pair)
+def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
+    db_pair = crud.get_pair_by_pairid(db, pair_id=pair.pair_id)
+    if db_pair:
+        raise HTTPException(status_code=400, detail="EPair already registered")
+    return crud.create_pair(db=db, pair=pair)
+
+
+@app.get("/pairs/", response_model=List[schemas.Pair])
+def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    pairs = crud.get_pairs(db, skip=skip, limit=limit)
+    return pairs
 
 # Close the cursor and the connection
 cursor.close()
