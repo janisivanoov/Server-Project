@@ -32,6 +32,7 @@ from .database import SessionLocal, engine
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -92,40 +93,6 @@ T.join()
 
 
 # SERVER PART
-
-
-
-PORT = 8080 #localhost:8080
-Handler = http.server.SimpleHTTPRequestHandler
-
-with socketserver.TCPServer(("", PORT), Handler) as httpd:
-    print("serving at port", PORT)
-    httpd.serve_forever()
-
-
-class PythonServer(SimpleHTTPRequestHandler):
-
-    def do_GET(self):
-        iii = 0
-        #TODO
-
-    def do_POST(self):
-        iii = 0
-        #TODO
-
-HOST_NAME = "localhost"
-PORT = 8080
-
-if __name__ == "__main__":
-    server = HTTPServer((HOST_NAME, PORT), PythonServer)
-    print(f"Server started http://localhost:8080")
-
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        server.server_close()
-        print("Server stopped successfully")
-        sys.exit(0)
 
 
 
@@ -232,11 +199,70 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
           }
         ],
         "stateMutability": "view",
-        "type": "function"
+        "type": "event"
+      },
+      {
+          "inputs": [
+              {
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "reserve1",
+                "type": "amount0In"
+              },
+              {
+                  "internalType": "uint256",
+                  "name": "amount1In",
+                  "type": "uint256"
+              },
+              {
+                  "internalType": "uint256",
+                  "name": "amount0Out",
+                  "type": "uint256"
+              },
+              {
+                  "internalType": "uint256",
+                  "name": "amount1Out",
+                  "type": "uint256"
+              },
+              {
+                  "internalType": "address",
+                  "name": "to",
+                  "type": "address"
+              }
+            ],
+            "name": "Swap",
+            "outputs": [
+              {
+                "internalType": "uint256",
+                "name": "amount0In",
+                "type": "uint256"
+              },
+              {
+                  "internalType": "uint256",
+                  "name": "amount1In",
+                  "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount0Out",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount1Out",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "event"
       }
     ]
 
-    rrcontract = w3.eth.contract(address = Web3.toChecksumAddress('0xa274d4daaff01e3aa710907aabdd57d036c96cec'), abi = rrabi)
+    rrcontract = w3.eth.contract(address = Web3.toChecksumAddress(eth_contract), abi = rrabi)
 
 
     # Function Reads First block    
@@ -259,7 +285,7 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
         d_name = "delete from test_info where addr = %s"
         if domain != "":
             if domain == "None":
-                # delete name from the registry
+                # delete
                 cursor.execute(d_name, [address])
                 my_cn.commit()
             else:
@@ -281,7 +307,7 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
     # Read contracts into array
 
     contracts = []
-    c_sql = "select address from contracts"
+    c_sql = "select topic from ttopics"
     cursor.execute(c_sql)
     for c in cursor:
         contracts.append(c)
@@ -325,7 +351,7 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
                     updateName(str(n), str(addresses[ii]), str( contracts[ii]), str(blocks[ii]))
                     ii += 1
         except BaseException as err:
-                print("Exception. Cannot resolve names  " + str(err))
+                print("Exception. Cannot  " + str(err))
         b += maxcount
 
     # resolving and saving remaining addresses
@@ -350,6 +376,16 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     pairs = crud.get_pairs(db, skip=skip, limit=limit)
     return pairs
+
+@app.middleware("http")
+async def db_session_middleware(request: Request, call_next):
+    response = Response("Internal server error", status_code=500)
+    try:
+        request.state.db = SessionLocal()
+        response = await call_next(request)
+    finally:
+        request.state.db.close()
+    return response
 
 # Close the cursor and the connection
 cursor.close()
