@@ -1,38 +1,34 @@
+#imports
 import http.server
 import socketserver
-from eth_typing.evm import HexAddress
-import mysql.connector
-from mysql.connector import errorcode
-import sys
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-from logging import error, exception
 import urllib.request
 import web3
-from web3.auto import w3
-from web3 import Web3
 import json
 import asyncio
-import mysql.connector
-from mysql.connector import errorcode
 import time
+import threading
+import sys
+import mysql.connector
+
+#from
+from eth_typing.evm import HexAddress
+from mysql.connector import errorcode
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+from logging import error, exception
+from web3.auto import w3
+from web3 import Web3
+from mysql.connector import errorcode
 from typing import List
 from fastapi import Depends, FastAPI, HTTPException
 from . import crud, models, schemas
-from .database import Base
-from typing import List
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from .database import Base, SessionLocal, engine
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, create_engine
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request, Response, Depends
 from fastapi.responses import HTMLResponse
 from uint import Uint, Int
 from pydantic import BaseModel
-from sqlalchemy.orm import relationship
-import threading
-from sqlalchemy.orm import Session
-from .database import SessionLocal, engine
-from sqlalchemy import create_engine
+from sqlalchemy.orm import relationship , Session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
 
 models.Base.metadata.create_all(bind=engine)
 
