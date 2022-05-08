@@ -98,6 +98,8 @@ T.join()
 
 # FastAPI 
 
+#database.py
+
 SQLALCHEMY_DATABASE_URL = "postgresql://user:password@postgresserver/db"
 
 engine = create_engine(
@@ -107,17 +109,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+#Model(ORM).py
 
 class Pair(Base):
     pair = "pair"
@@ -157,6 +153,30 @@ class Pair(PairBase):
 
 def get_pair(db: Session, pair_id: int):
     return db.query(models.Pair).filter(models.Pair.id == pair_id).first()
+
+#crud.py
+
+def get_items(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Item).offset(skip).limit(limit).all()
+
+
+def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
+    db_item = models.Item(**item.dict(), owner_id=user_id)
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+#main.oy
+
+# Dependency
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 @app.post("/pairs/", response_model=schemas.Pair)
 def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
