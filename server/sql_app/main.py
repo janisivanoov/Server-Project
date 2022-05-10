@@ -22,13 +22,16 @@ from typing import List
 from fastapi import Depends, FastAPI, HTTPException
 from . import crud, models, schemas
 from .database import Base, SessionLocal, engine
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, create_engine
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request, Response, Depends
 from fastapi.responses import HTMLResponse
-from uint import Uint, Int
 from pydantic import BaseModel
-from sqlalchemy.orm import relationship , Session, sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship , Session
+from typing import List
+from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy.orm import Session
+from . import crud, models, schemas
+from .database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -94,76 +97,7 @@ T.join()
 
 # FastAPI 
 
-#database.py
-
-SQLALCHEMY_DATABASE_URL = "postgresql://user:password@postgresserver/db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
-
-models.Base.metadata.create_all(bind=engine)
-
 app = FastAPI()
-
-#Model(ORM).py
-
-class Pair(Base):
-    pair = "pair"
-
-
-    reserve0 = Column(Integer, primary_key=True, index=True)
-    reserve1 = Column(Integer, primary_key=True, index=True)
-    token0 = Column(Integer, primary_key=True, index=True)
-    token1 = Column(Integer, primary_key=True, index=True)
-    fee = Column(Integer, primary_key=True, index=True)
-    address = Column(Integer, primary_key=True, index=True)
-
-class PairBase(BaseModel):
-    reserve0: Uint
-    reserve1: Uint
-    token0: hex(20)
-    token1: hex(20)
-    fee: Uint
-    address: hex(20)
-
-
-class PairCreate(PairBase):
-    pass
-
-
-class Pair(PairBase):
-    reserve0: Uint
-    reserve1: Uint
-    token0: hex(20)
-    token1: hex(20)
-    fee: Uint
-    address: hex(20)
-    pair_id: int
-
-    class Config:
-        orm_mode = True
-
-def get_pair(db: Session, pair_id: int):
-    return db.query(models.Pair).filter(models.Pair.id == pair_id).first()
-
-#crud.py
-
-def get_items(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Item).offset(skip).limit(limit).all()
-
-
-def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
-    db_item = models.Item(**item.dict(), owner_id=user_id)
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
-
-#main.oy
 
 # Dependency
 

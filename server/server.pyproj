@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>2bf3f51e-5067-4d8d-b13c-9ca9912971b1</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>server.py</StartupFile>
+    <StartupFile>sql_app\main.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -21,7 +21,14 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="server.py" />
+    <Compile Include="sql_app\crud.py" />
+    <Compile Include="sql_app\database.py" />
+    <Compile Include="sql_app\models.py" />
+    <Compile Include="sql_app\main.py" />
+    <Compile Include="sql_app\schemas.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="sql_app\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
