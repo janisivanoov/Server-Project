@@ -37,7 +37,7 @@ models.Base.metadata.create_all(bind=engine)
 
 
 
-# DATABASE PART
+# DATABASE(WS m.) PART
 
 
 
@@ -91,7 +91,7 @@ T.join()
 
 
 
-# SERVER PART
+# SERVER PART(FastAPI)
 
 
 
