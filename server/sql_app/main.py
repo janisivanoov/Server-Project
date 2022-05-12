@@ -294,7 +294,12 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
         except BaseException as err:
                 print("Exception.  " + str(err))
 
-        
+        #TODO: Change logic!!!
+        #TODO: Change logic!!!
+        #TODO: Change logic!!!
+        #TODO: Change logic!!!
+
+        #Cleaning duplicates
         
         # initializing MySQL connection #1
         try:
@@ -379,7 +384,7 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/pairs/", response_model=List[schemas.Pair])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_pairs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     pairs = crud.get_pairs(db, skip=skip, limit=limit)
     return pairs
 
