@@ -2,6 +2,7 @@
 import http.server
 import socketserver
 import urllib.request
+from mysql.connector import cursor_cext
 import web3
 import json
 import asyncio
@@ -63,7 +64,7 @@ except mysql.connector.Error as err:
 else:
   print ("Connected to the Database")
   
-cursor =  my_cn.cursor() 
+cursor0 =  my_cn.cursor() 
 
 #WS method
 
@@ -216,108 +217,163 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
 
 
     # Function Reads First block    
-
-    def getBlock():
-        # read block number
-        q_block = "SELECT Max(block) from server.test_info"
-        cursor.execute(q_block)
-        for (block) in cursor:
-            start_block = block
-        if start_block == (None,):
-            start_block = (0,)
-        return start_block[0]
-
+    
+    #TODO: Change logic!!!
+    #TODO: Change logic!!!
+    #TODO: Change logic!!!
+    #TODO: Change logic!!!
 
     # Function updates reverse registry table
-    def updateName(domain, address, block):
-        i_name = "insert into test_info (addr, name, block) values (%s, %s, %s)"
-        u_name = "update test_info set name = %s, block=%s where addr = %s"
-        d_name = "delete from test_info where addr = %s"
-        if domain != "":
-            if domain == "None":
+    def updatePair(pair, address, block):
+        i_pair = "insert into test_info (addr, name, block) values (%s, %s, %s)"
+        u_pair = "update test_info set name = %s, block=%s where addr = %s"
+        d_pair = "delete from test_info where addr = %s"
+        if pair != "":
+            if pair == "None":
                 # delete
-                cursor.execute(d_name, [address])
+                cursor.execute(d_pair, [address])
                 my_cn.commit()
             else:
                 # insert or update
 
                 try:
                     # attempt to insert
-                    cursor.execute(i_name, [address, domain, block])
+                    cursor.execute(i_pair, [address, pair, block])
                 except mysql.connector.Error as err:
                     # update if record is there
                     if err.errno == 1062:
-                        cursor.execute(u_name, [domain, block, address])
+                        cursor.execute(u_pair, [pair, block, address])
                     else:
                         print (err)
                         quit()
                 finally:
                     my_cn.commit()
 
-    # Read contracts into array
+    # Read topics into array
 
-    contracts = []
+    topics = []
     c_sql = "select topic from ttopics"
-    cursor.execute(c_sql)
-    for c in cursor:
-        contracts.append(c)
+    cursor0.execute(c_sql)
+    for c in cursor0:
+        topics.append(c)
 
 
     aaa = []
     bbb = []
     ccc = []
-    i=0
-    for c in contracts:   
-        print("Processing " + c[0])
-
-        # Get transactions
-
-        url ='https://api.etherscan.io/api?module=account&action=txlist&address='+c[0]+'&startblock='+str(getBlock(c[0]))+'&sort=asc&apikey='+eth_key
-        req = urllib.request.urlopen(url)
-        resp = req.read()
-        tr = json.loads(resp)
-        for txh in tr["result"]:
-            aaa.append(Web3.toChecksumAddress(txh["from"]))
-            bbb.append(txh["blockNumber"])
-            ccc.append(c[0])
-            i += 1
-
-
-    b = 0
-
+    b=0
+    
     # loop with maxcount step
 
     while (b+maxcount<len(aaa)):
         addresses = aaa[b:b+maxcount]
         blocks = bbb[b:b+maxcount]
-        contracts = ccc[b:b+maxcount]
+        topics = ccc[b:b+maxcount]
 
-        # resolving and saving stop
         try:
-                names = rrcontract.functions.getNames(addresses).call()
+                pairs = rrcontract.functions.Swap(addresses).call()
                 ii = 0
-                for n in names:
-                    print(addresses[ii] + "---" + n)
-                    updateName(str(n), str(addresses[ii]), str( contracts[ii]), str(blocks[ii]))
+                for p in pairs:
+                    print(addresses[ii] + "---" + p)
+                    updatePair(str(p), str(addresses[ii]), str(topics[ii]), str(blocks[ii]))
                     ii += 1
         except BaseException as err:
-                print("Exception. Cannot  " + str(err))
+                print("Exception. " + str(err))
         b += maxcount
 
-    # resolving and saving remaining addresses
+        addresses = aaa[b:len(aaa)-1]
+        blocks = bbb[b:len(bbb)-1]
+        topics = ccc[b:len(ccc)-1]
+        try:
+            pairs = rrcontract.functions.Swap(addresses).call()
+            ii = 0
+            for p in pairs:
+                print(addresses[ii] + "---" + p)
+                updatePair(str(p), str(addresses[ii]), str(topics[ii]), str(blocks[ii]))
+                ii += 1
+        except BaseException as err:
+                print("Exception.  " + str(err))
 
-    addresses = aaa[b:len(aaa)-1]
-    blocks = bbb[b:len(bbb)-1]
-    contracts = ccc[b:len(ccc)-1]
-    try:
-        names = rrcontract.functions.getNames(addresses).call()
-        ii = 0
-        for n in names:
-            print(addresses[ii] + "---" + n)
-            updateName(str(n), str(addresses[ii]), str( contracts[ii]), str(blocks[ii]))
-            ii += 1
-    except BaseException as err:
-            print("Exception. Cannot resolve names  " + str(err))
+        
+        
+        # initializing MySQL connection #1
+        try:
+          my_cn = mysql.connector.connect(**my_config)
+        except mysql.connector.Error as err:
+            print(err)
+            quit()
+        else:
+          print ("Connected to the Database #1")
+
+        # initializing MySQL connection #2
+        try:
+          my_cn2 = mysql.connector.connect(**my_config)
+        except mysql.connector.Error as err:
+            print(err)
+            quit()
+        else:
+          print ("Connected to the Database #2")
+
+
+        # initializing MySQL connection #3
+        try:
+          my_cn3 = mysql.connector.connect(**my_config)
+        except mysql.connector.Error as err:
+            print(err)
+            quit()
+        else:
+          print ("Connected to the Database #3")
+
+
+
+        cursor =  my_cn.cursor() 
+        cursor2 =  my_cn2.cursor()
+        cursor3 = my_cn3.cursor()
+
+        # Making a consolidated array of addresses
+
+        # Read contracts into array
+
+        c_sql="select pair from cur_pair"
+        cursor.execute(c_sql)
+        for c in cursor:
+            cur_name = c[0]
+
+
+        c_sql = "select pair_id from test_info where pair_id > %s order by pair_id"
+        cursor.execute(c_sql, [cur_name])
+        for c in cursor:
+            try:
+                pair = pairs(c[1].strip())
+                cursor2.execute('update cur_pair set pair = %s', [ c[1] ])
+                my_cn2.commit()
+                if pair != c[0]:
+                    print(c[0] + '---' + c[1] + '---' + str(pair) + '--- ERROR')
+                    cursor3.execute('insert into audit (pair, pair_id, message) values (%s, %s, %s)', [ c[0], c[1], 'ERROR' ])
+                    my_cn3.commit()
+                else:
+                    print(c[0] + '---' + c[1] + '---' + str(pair) + '--- OK')
+            except BaseException as err:
+                print(c[0] + '---' + c[1] + '---' + str(pair) + '--- Exception ' + str(err))
+                cursor3.execute('insert into audit (pair, pair_id, message) values (%s, %s, %s, %s)', [ c[0], c[1], 'Exception '+str(err) ])
+                my_cn3.commit()
+    
+
+        # Clean the database
+        cursor3.execulte('delete from server.test_info where addr in (select pair_id from audit)')
+        my_cn3.commit()
+        cursor3.execute('delete from server.audit')
+        my_cn3.commit()
+        
+        # Close the cursor and the connection
+        cursor.close()
+        my_cn.close()
+
+        cursor2.close()
+        my_cn2.close()
+
+        cursor3.close()
+        my_cn3.close()
 
     return crud.create_pair(db=db, pair=pair)
 
@@ -338,5 +394,5 @@ async def db_session_middleware(request: Request, call_next):
     return response
 
 # Close the cursor and the connection
-cursor.close()
+cursor0.close()
 my_cn.close()
