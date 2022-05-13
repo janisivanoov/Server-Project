@@ -38,7 +38,7 @@ models.Base.metadata.create_all(bind=engine)
 
 
 
-# DATABASE(WS m.) PART
+# DATABASE PART
 
 
 
@@ -65,29 +65,6 @@ else:
   print ("Connected to the Database")
   
 cursor0 =  my_cn.cursor() 
-
-#WS method
-
-IFilter = w3.eth.filter(
-    {
-        "topics": [[
-            #sync
-            "0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1",
-            #swap
-            "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822"
-            ]]        
-    }
-)
-
-def IFilter_Logging(IFilter, poll_interval):
-    while True:
-        #output to database
-        print(IFilter.get_new_entries())
-        time.sleep(poll_interval)
-
-T = threading.Thread(target = IFilter_Logging, args = (IFilter,1))
-T.start()
-T.join()
 
 
 
@@ -397,6 +374,49 @@ async def db_session_middleware(request: Request, call_next):
     finally:
         request.state.db.close()
     return response
+
+#WebSocket
+
+IFilter = w3.eth.filter(
+    {
+        "topics": [[
+            #sync
+            "0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1",
+            #swap
+            "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822"
+            ]]        
+    }
+)
+
+async def get_IFilter_Logging(websocket: WebSocket, IFilter, poll_interval):
+    while True:
+        #output to database
+        print(IFilter.get_new_entries())
+        time.sleep(poll_interval)
+        if IFilter.get_new_entries() is None:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return IFilter or poll_interval
+
+T = threading.Thread(target = IFilter_Logging, args = (IFilter,1))
+T.start()
+T.join()
+
+@app.websocket("/pairs/{pair_id}/ws")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    pair_id: int,
+    q: Optional[int] = None,
+    IFilter_Logging: str = Depends(get_IFilter_Logging),
+):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()
+        await websocket.send_text(
+            f"{IFilter_Logging}"
+        )
+        if q is not None:
+            await websocket.send_text(f"Q{q}")
+        await websocket.send_text(f"{data} {pair_id}")
 
 # Close the cursor and the connection
 cursor0.close()
