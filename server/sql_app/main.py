@@ -19,27 +19,20 @@ from logging import error, exception
 from web3.auto import w3
 from web3 import Web3
 from mysql.connector import errorcode
-from typing import List
-from fastapi import Depends, FastAPI, HTTPException
 from . import crud, models, schemas
 from .database import Base, SessionLocal, engine
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request, Response, Cookie, Depends, Query, status, websockets
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import relationship , Session
-from typing import List
-from fastapi import Depends, FastAPI, HTTPException
-from sqlalchemy.orm import Session
-from . import crud, models, schemas
 from .database import SessionLocal, engine
+from typing import List, Optional
 
 models.Base.metadata.create_all(bind=engine)
 
 
-
 # DATABASE PART
-
 
 
 # Contract address
@@ -377,6 +370,24 @@ async def db_session_middleware(request: Request, call_next):
 
 #WebSocket
 
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+
+manager = ConnectionManager()
+
 IFilter = w3.eth.filter(
     {
         "topics": [[
@@ -409,14 +420,19 @@ async def websocket_endpoint(
     IFilter_Logging: str = Depends(get_IFilter_Logging),
 ):
     await websocket.accept()
-    while True:
-        data = await websocket.receive_text()
-        await websocket.send_text(
-            f"{IFilter_Logging}"
-        )
-        if q is not None:
-            await websocket.send_text(f"Q{q}")
-        await websocket.send_text(f"{data} {pair_id}")
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_text(
+                f"{IFilter_Logging}"
+            )
+            if q is not None:
+                await websocket.send_text(f"Q{q}")
+            await websocket.send_text(f"{data} {pair_id}")
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+        await manager.broadcast(f"{client_id} disconnected")
 
 # Close the cursor and the connection
 cursor0.close()
