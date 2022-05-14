@@ -2,7 +2,6 @@
 import http.server
 import socketserver
 import urllib.request
-from mysql.connector import cursor_cext
 import web3
 import json
 import asyncio
@@ -13,12 +12,11 @@ import mysql.connector
 
 #from
 from eth_typing.evm import HexAddress
-from mysql.connector import errorcode
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from logging import error, exception
 from web3.auto import w3
 from web3 import Web3
-from mysql.connector import errorcode
+from mysql.connector import errorcode, cursor_cext
 from . import crud, models, schemas
 from .database import Base, SessionLocal, engine
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
