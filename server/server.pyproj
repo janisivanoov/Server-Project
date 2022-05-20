@@ -21,6 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="sql_app\algorithm.py" />
     <Compile Include="sql_app\crud.py" />
     <Compile Include="sql_app\database.py" />
     <Compile Include="sql_app\models.py" />

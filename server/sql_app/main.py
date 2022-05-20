@@ -9,6 +9,7 @@ import time
 import threading
 import sys
 import mysql.connector
+import uvicorn
 
 #from
 from eth_typing.evm import HexAddress
@@ -17,7 +18,7 @@ from logging import error, exception
 from web3.auto import w3
 from web3 import Web3
 from mysql.connector import errorcode, cursor_cext
-from . import crud, models, schemas
+from . import crud, models, schemas, crud, database, algorithm
 from .database import Base, SessionLocal, engine
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request, Response, Cookie, Depends, Query, status, websockets
@@ -57,9 +58,6 @@ else:
   
 cursor0 =  my_cn.cursor() 
 
-
-
-
 # SERVER PART(FastAPI)
 
 
@@ -85,7 +83,6 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
 
     #HTTP method
 
-    eth_key = "7I39Q4ZZ6SER7ZZTKQMNGYHD3UTZ6BSQ32"
     eth_contract = "0xa274d4daaff01e3aa710907aabdd57d036c96cec"
 
     maxcount = 100
@@ -181,36 +178,30 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
       }
     ]
 
+    #set address
     rrcontract = w3.eth.contract(address = Web3.toChecksumAddress(eth_contract), abi = rrabi)
 
-
-    # Function Reads First block    
-    
-    #TODO: Change logic!!!
-    #TODO: Change logic!!!
-    #TODO: Change logic!!!
-    #TODO: Change logic!!!
+    # Function Reads     
 
     # Function updates reverse registry table
-    def updatePair(pair, address, block):
-        i_pair = "insert into test_info (addr, name, block) values (%s, %s, %s)"
-        u_pair = "update test_info set name = %s, block=%s where addr = %s"
-        d_pair = "delete from test_info where addr = %s"
+    def updatePair(token0, token1, reserve0, reserve1, fee, address, pair_id):
+        i_pair = "insert into server_db (token0, token1, address, reserve0, reserve0, fee, pair_id) values (%s, %s, %s, %s, %s, %s, %s)"
+        u_pair = "update test_info set token0 = %s, token1 = %, reserve0 = %s, reserve1 = %s, fee = %s, pair_id = %s where addr = %s"
+        d_pair = "delete from test_info where addr = %s and pair_id = %s"
         if pair != "":
             if pair == "None":
                 # delete
-                cursor.execute(d_pair, [address])
+                cursor.execute(d_pair, [address, pair_id])
                 my_cn.commit()
             else:
                 # insert or update
-
                 try:
                     # attempt to insert
-                    cursor.execute(i_pair, [address, pair, block])
+                    cursor.execute(i_pair, [token0, token1, reserve0, reserve1, fee, address, pair_id])
                 except mysql.connector.Error as err:
                     # update if record is there
                     if err.errno == 1062:
-                        cursor.execute(u_pair, [pair, block, address])
+                        cursor.execute(u_pair, [token0, token1, reserve0, reserve1, fee, address, pair_id])
                     else:
                         print (err)
                         quit()
@@ -229,43 +220,54 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
     aaa = []
     bbb = []
     ccc = []
+    eee = []
+    ddd = []
+    fff = []
+    sss = []
+    rrr = []
     b=0
     
     # loop with maxcount step
-
+ 
     while (b+maxcount<len(aaa)):
         addresses = aaa[b:b+maxcount]
-        blocks = bbb[b:b+maxcount]
+        pair_id = bbb[b:b+maxcount]
         topics = ccc[b:b+maxcount]
+        reserve0 = eee[b:b+maxcount]
+        reserve1 = ddd[b:b+maxcount]
+        token0 = fff[b:b+maxcount]
+        token1 = sss[b:b+maxcount]
+        fee = rrr[b:b+maxcount]
 
         try:
                 pairs = rrcontract.functions.Swap(addresses).call()
                 ii = 0
                 for p in pairs:
                     print(addresses[ii] + "---" + p)
-                    updatePair(str(p), str(addresses[ii]), str(topics[ii]), str(blocks[ii]))
+                    updatePair(str(token0[ii]), str(token1[ii]), str(reserve0[ii]), str(reserve1[ii]), str(fee[ii]), str(addresses[ii]), pair_id[ii])
                     ii += 1
         except BaseException as err:
                 print("Exception. " + str(err))
         b += maxcount
 
         addresses = aaa[b:len(aaa)-1]
-        blocks = bbb[b:len(bbb)-1]
+        pair_id = bbb[b:len(bbb)-1]
         topics = ccc[b:len(ccc)-1]
+        reserve0 = eee[b:len(eee)-1]
+        reserve1 = ddd[b:len(ddd)-1]
+        token0 = fff[b:len(fff)-1]
+        token1 = sss[b:len(sss)-1]
+        fee = rrr[b:len(rrr)-1]
+
         try:
             pairs = rrcontract.functions.Swap(addresses).call()
             ii = 0
             for p in pairs:
                 print(addresses[ii] + "---" + p)
-                updatePair(str(p), str(addresses[ii]), str(topics[ii]), str(blocks[ii]))
+                updatePair(str(token0[ii]), str(token1[ii]), str(reserve0[ii]), str(reserve1[ii]), str(fee[ii]), str(addresses[ii]), pair_id[ii])
                 ii += 1
         except BaseException as err:
                 print("Exception.  " + str(err))
-
-        #TODO: Change logic!!!
-        #TODO: Change logic!!!
-        #TODO: Change logic!!!
-        #TODO: Change logic!!!
 
         #Cleaning duplicates
         
@@ -312,7 +314,10 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
         for c in cursor:
             cur_name = c[0]
 
-
+        #TODO: Change logic!
+        #TODO: Change logic!
+        #TODO: Change logic!
+        #TODO: Change logic! 
         c_sql = "select pair_id from test_info where pair_id > %s order by pair_id"
         cursor.execute(c_sql, [cur_name])
         for c in cursor:
@@ -406,7 +411,7 @@ async def get_IFilter_Logging(websocket: WebSocket, IFilter, poll_interval):
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return IFilter or poll_interval
 
-T = threading.Thread(target = IFilter_Logging, args = (IFilter,1))
+T = threading.Thread(target = IFilter, args = (IFilter,1))
 T.start()
 T.join()
 
@@ -430,7 +435,10 @@ async def websocket_endpoint(
             await websocket.send_text(f"{data} {pair_id}")
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-        await manager.broadcast(f"{client_id} disconnected")
+        await manager.broadcast(f"{pair_id} disconnected")
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 # Close the cursor and the connection
 cursor0.close()
