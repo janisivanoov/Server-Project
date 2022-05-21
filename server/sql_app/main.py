@@ -216,7 +216,6 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
     for c in cursor0:
         topics.append(c)
 
-
     aaa = []
     bbb = []
     ccc = []
@@ -289,7 +288,6 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
         else:
           print ("Connected to the Database #2")
 
-
         # initializing MySQL connection #3
         try:
           my_cn3 = mysql.connector.connect(**my_config)
@@ -299,8 +297,6 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
         else:
           print ("Connected to the Database #3")
 
-
-
         cursor =  my_cn.cursor() 
         cursor2 =  my_cn2.cursor()
         cursor3 = my_cn3.cursor()
@@ -309,36 +305,32 @@ def create_user(pair: schemas.UPairCreate, db: Session = Depends(get_db)):
 
         # Read contracts into array
 
-        c_sql="select pair from cur_pair"
+        c_sql="select token0, token1, reserve0, reserve1, address, pair_id, fee from cur_pair"
         cursor.execute(c_sql)
         for c in cursor:
             cur_name = c[0]
 
-        #TODO: Change logic!
-        #TODO: Change logic!
-        #TODO: Change logic!
-        #TODO: Change logic! 
         c_sql = "select pair_id from test_info where pair_id > %s order by pair_id"
         cursor.execute(c_sql, [cur_name])
         for c in cursor:
             try:
                 pair = pairs(c[1].strip())
-                cursor2.execute('update cur_pair set pair = %s', [ c[1] ])
+                cursor2.execute('update cur_pair set pair_id = %s , address = %s, token0 = %s, token1 = %s, reserve0 = %s, reserve1 = %s, fee = %s', [c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]])
                 my_cn2.commit()
                 if pair != c[0]:
                     print(c[0] + '---' + c[1] + '---' + str(pair) + '--- ERROR')
-                    cursor3.execute('insert into audit (pair, pair_id, message) values (%s, %s, %s)', [ c[0], c[1], 'ERROR' ])
+                    cursor3.execute('insert into audit (token0, token1, reserve0, reserve1, address, pair_id, fee, message) values (%s, %s, %s, %s, %s, %s, %s, %s)', [ c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], 'ERROR' ])
                     my_cn3.commit()
                 else:
                     print(c[0] + '---' + c[1] + '---' + str(pair) + '--- OK')
             except BaseException as err:
                 print(c[0] + '---' + c[1] + '---' + str(pair) + '--- Exception ' + str(err))
-                cursor3.execute('insert into audit (pair, pair_id, message) values (%s, %s, %s, %s)', [ c[0], c[1], 'Exception '+str(err) ])
+                cursor3.execute('insert into audit (token0, token1, reserve0, reserve1, address, pair_id, fee, message) values (%s, %s, %s, %s, %s, %s, %s, %s)', [ c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], 'Exception '+str(err) ])
                 my_cn3.commit()
     
 
         # Clean the database
-        cursor3.execulte('delete from server.test_info where addr in (select pair_id from audit)')
+        cursor3.execulte('delete from server.test_info where address, pair_id, reserve0, reserve1, token0, token1, fee in (select pair_id from audit)')
         my_cn3.commit()
         cursor3.execute('delete from server.audit')
         my_cn3.commit()
